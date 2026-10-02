@@ -1,13 +1,13 @@
-import * as SecureStore from 'expo-secure-store';
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { STORAGE_KEYS, USE_MOCK } from '../constants/config';
-import { mockAuth } from '../mocks/mockAuth';
-import { AuthSession, User } from '../types';
+import * as SecureStore from "expo-secure-store";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { STORAGE_KEYS } from "../constants/config";
+import { authService } from "../services/authService";
+import { AuthSession, User } from "../types";
 
 interface AuthContextValue {
   user: User | null;
   token: string | null;
-  isLoading: boolean; // true while restoring session on app boot
+  isLoading: boolean;
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -21,7 +21,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session from secure storage on app launch.
   useEffect(() => {
     (async () => {
       try {
@@ -32,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(JSON.parse(storedUser));
         }
       } catch (e) {
-        console.warn('Failed to restore session', e);
+        console.warn("Failed to restore session", e);
       } finally {
         setIsLoading(false);
       }
@@ -41,15 +40,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function persistSession(session: AuthSession) {
     await SecureStore.setItemAsync(STORAGE_KEYS.token, session.token);
-    await SecureStore.setItemAsync(STORAGE_KEYS.user, JSON.stringify(session.user));
+    await SecureStore.setItemAsync(
+      STORAGE_KEYS.user,
+      JSON.stringify(session.user),
+    );
     setUser(session.user);
     setToken(session.token);
   }
 
   async function signIn(email: string, password: string) {
-    const session = USE_MOCK
-      ? await mockAuth.login(email, password)
-      : await mockAuth.login(email, password); // swap for real authService later
+    const session = await authService.login(email, password);
     await persistSession(session);
   }
 
@@ -83,6 +83,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

@@ -1,13 +1,14 @@
-import { getMockEventById, mockEvents } from '../mocks/mockEvents';
-import { Event } from '../types';
+import { mapEvent } from "../api/mappers";
+import { mockEvents } from "../mocks/mockEvents";
+import { Event } from "../types";
 
-// USE_MOCK is true everywhere right now — once backend exists, branch
-// here to call the real API client instead. Screens never need to change.
 export const eventsService = {
   async getEvents(): Promise<Event[]> {
-    return mockEvents;
+    const raw = await mockEvents.getEvents();
+    return raw.map(mapEvent);
   },
   async getEventById(id: string): Promise<Event | undefined> {
-    return getMockEventById(id);
+    const raw = await mockEvents.getEventById(id);
+    return raw ? mapEvent(raw) : undefined;
   },
 };

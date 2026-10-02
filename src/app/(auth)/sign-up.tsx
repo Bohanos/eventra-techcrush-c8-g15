@@ -1,6 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
-import React, { useState } from 'react';
+import { authService } from "@/services/authService";
+import { Ionicons } from "@expo/vector-icons";
+import { Link } from "expo-router";
+import { useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -8,65 +9,80 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import InputField from '../../components/InputField';
-import PrimaryButton from '../../components/PrimaryButton';
-import { useAuth } from '../../context/AuthContext';
-import { mockAuth } from '../../mocks/mockAuth';
-import { colors, spacing, typography } from '../../constants/theme';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import InputField from "../../components/InputField";
+import PrimaryButton from "../../components/PrimaryButton";
+import { colors, spacing, typography } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
 
 export default function SignUpScreen() {
   const { setSession } = useAuth();
 
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   async function handleCreateAccount() {
-    setError('');
+    setError("");
     if (!firstName || !lastName || !email || !password) {
-      setError('Please fill in every field.');
+      setError("Please fill in every field.");
       return;
     }
     if (!agreed) {
-      setError('Please agree to the Terms & Conditions.');
+      setError("Please agree to the Terms & Conditions.");
       return;
     }
     setLoading(true);
     try {
-      await mockAuth.signUp({ firstName, lastName, email, password });
+      await authService.signUp({ firstName, lastName, email, password });
       // NOTE: the real flow routes to an OTP step (verify-account) before
       // issuing a session. That screen isn't wired up yet, so for today's
       // demo we sign the user in immediately after "sign up."
-      const session = await mockAuth.verifyAccount(email, '000000');
+      const session = await authService.verifyAccount(email, "000000");
       session.user.firstName = firstName;
       session.user.lastName = lastName;
-      session.user.avatarInitials = `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase();
+      session.user.avatarInitials =
+        `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
       await setSession(session);
     } catch (e: any) {
-      setError(e?.message || 'Could not create account.');
+      setError(e?.message || "Could not create account.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join Eventra and start exploring amazing events.</Text>
+        <Text style={styles.subtitle}>
+          Join Eventra and start exploring amazing events.
+        </Text>
 
         <View style={styles.nameRow}>
           <View style={{ flex: 1 }}>
-            <InputField label="First Name" value={firstName} onChangeText={setFirstName} placeholder="John" />
+            <InputField
+              label="First Name"
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholder="John"
+            />
           </View>
           <View style={{ flex: 1 }}>
-            <InputField label="Last Name" value={lastName} onChangeText={setLastName} placeholder="Doe" />
+            <InputField
+              label="Last Name"
+              value={lastName}
+              onChangeText={setLastName}
+              placeholder="Doe"
+            />
           </View>
         </View>
 
@@ -88,9 +104,13 @@ export default function SignUpScreen() {
 
         <Pressable style={styles.agreeRow} onPress={() => setAgreed((a) => !a)}>
           <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
-            {agreed && <Ionicons name="checkmark" size={12} color={colors.white} />}
+            {agreed && (
+              <Ionicons name="checkmark" size={12} color={colors.white} />
+            )}
           </View>
-          <Text style={styles.agreeText}>I agree to the Terms & Conditions</Text>
+          <Text style={styles.agreeText}>
+            I agree to the Terms & Conditions
+          </Text>
         </Pressable>
 
         {!!error && <Text style={styles.error}>{error}</Text>}
@@ -119,23 +139,42 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   container: { padding: spacing.lg, paddingTop: spacing.xl },
   title: { ...typography.h1, color: colors.text, marginBottom: spacing.xs },
-  subtitle: { ...typography.body, color: colors.textMuted, marginBottom: spacing.lg },
-  nameRow: { flexDirection: 'row', gap: spacing.md },
-  agreeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
+  subtitle: {
+    ...typography.body,
+    color: colors.textMuted,
+    marginBottom: spacing.lg,
+  },
+  nameRow: { flexDirection: "row", gap: spacing.md },
+  agreeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
   checkbox: {
     width: 18,
     height: 18,
     borderRadius: 4,
     borderWidth: 1.5,
     borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: spacing.xs,
   },
-  checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
   agreeText: { ...typography.caption, color: colors.textMuted },
-  error: { ...typography.caption, color: colors.error, marginBottom: spacing.sm },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.xl },
+  error: {
+    ...typography.caption,
+    color: colors.error,
+    marginBottom: spacing.sm,
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: spacing.xl,
+  },
   footerText: { ...typography.body, color: colors.textMuted },
   link: { ...typography.bodyBold, color: colors.primary },
 });

@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -9,15 +9,14 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import PrimaryButton from '../../components/PrimaryButton';
-import { useAuth } from '../../context/AuthContext';
-import { getMockTiersForEvent } from '../../mocks/mockEvents';
-import { eventsService } from '../../services/eventsService';
-import { ticketsService } from '../../services/ticketsService';
-import { colors, radius, spacing, typography } from '../../constants/theme';
-import { Event, TicketTier } from '../../types';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import PrimaryButton from "../../components/PrimaryButton";
+import { colors, radius, spacing, typography } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
+import { bookingsService } from "../../services/bookingsService";
+import { eventsService } from "../../services/eventsService";
+import { Event, TicketType } from "../../types";
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,7 +24,7 @@ export default function EventDetailScreen() {
   const { user } = useAuth();
 
   const [event, setEvent] = useState<Event | null>(null);
-  const [tiers, setTiers] = useState<TicketTier[]>([]);
+  const [tiers, setTiers] = useState<TicketType[]>([]);
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -37,9 +36,8 @@ export default function EventDetailScreen() {
     eventsService.getEventById(id).then((data) => {
       if (data) {
         setEvent(data);
-        const eventTiers = getMockTiersForEvent(data);
-        setTiers(eventTiers);
-        setSelectedTierId(eventTiers[0]?.id ?? null);
+        setTiers(data.ticketTypes);
+        setSelectedTierId(data.ticketTypes[0]?.id ?? null);
       }
       setLoading(false);
     });
@@ -52,20 +50,21 @@ export default function EventDetailScreen() {
     if (!event || !selectedTier) return;
     setBooking(true);
     try {
-      const ticket = await ticketsService.bookTicket({
+      const newBooking = await bookingsService.createBooking({
         eventId: event.id,
+        ticketTypeId: selectedTier.id,
+        quantity,
+        attendeeName: user ? `${user.firstName} ${user.lastName}` : "Guest",
         eventTitle: event.title,
         eventImage: event.image,
         tierName: selectedTier.name,
-        quantity,
-        dateLabel: event.dateLabel,
-        time: event.time,
+        unitPrice: selectedTier.price,
+        startDate: event.startDate,
         venue: event.venue,
-        attendeeName: user ? `${user.firstName} ${user.lastName}` : 'Guest',
       });
       // Skips the checkout/payment screens (not built yet) and goes
       // straight to the issued pass — good enough for today's demo.
-      router.push(`/ticket/${ticket.id}/qr`);
+      router.push(`/ticket/${newBooking.id}/qr`);
     } finally {
       setBooking(false);
     }
@@ -74,7 +73,10 @@ export default function EventDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
+        <ActivityIndicator
+          color={colors.primary}
+          style={{ marginTop: spacing.xxl }}
+        />
       </SafeAreaView>
     );
   }
@@ -88,34 +90,45 @@ export default function EventDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <ScrollView>
         <View>
           <Image source={{ uri: event.image }} style={styles.hero} />
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
             <Ionicons name="arrow-back" size={20} color={colors.white} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.heartButton} onPress={() => setSaved((s) => !s)}>
-            <Ionicons name={saved ? 'heart' : 'heart-outline'} size={20} color={saved ? colors.error : colors.white} />
+          <TouchableOpacity
+            style={styles.heartButton}
+            onPress={() => setSaved((s) => !s)}
+          >
+            <Ionicons
+              name={saved ? "heart" : "heart-outline"}
+              size={20}
+              color={saved ? colors.error : colors.white}
+            />
           </TouchableOpacity>
           <View style={styles.badgeRow}>
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{event.category}</Text>
             </View>
-            {!!event.seatsLeft && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>🎟 {event.seatsLeft} Seats Left</Text>
-              </View>
-            )}
           </View>
         </View>
 
         <View style={styles.body}>
           <Text style={styles.title}>{event.title}</Text>
-          {!!event.description && <Text style={styles.description}>{event.description}</Text>}
+          {!!event.description && (
+            <Text style={styles.description}>{event.description}</Text>
+          )}
 
           <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+            <Ionicons
+              name="calendar-outline"
+              size={18}
+              color={colors.primary}
+            />
             <View style={{ marginLeft: spacing.sm }}>
               <Text style={styles.infoPrimary}>{event.dateLabel}</Text>
               <Text style={styles.infoSecondary}>{event.time}</Text>
@@ -123,7 +136,11 @@ export default function EventDetailScreen() {
           </View>
 
           <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={18} color={colors.primary} />
+            <Ionicons
+              name="location-outline"
+              size={18}
+              color={colors.primary}
+            />
             <View style={{ marginLeft: spacing.sm, flex: 1 }}>
               <Text style={styles.infoPrimary}>{event.venue}</Text>
             </View>
@@ -131,7 +148,11 @@ export default function EventDetailScreen() {
 
           {!!event.organizerName && (
             <View style={styles.infoRow}>
-              <Ionicons name="person-circle-outline" size={18} color={colors.primary} />
+              <Ionicons
+                name="person-circle-outline"
+                size={18}
+                color={colors.primary}
+              />
               <Text style={[styles.infoPrimary, { marginLeft: spacing.sm }]}>
                 Organized by {event.organizerName}
               </Text>
@@ -150,9 +171,13 @@ export default function EventDetailScreen() {
               >
                 <View style={styles.tierHeaderRow}>
                   <Text style={styles.tierName}>{tier.name}</Text>
-                  <Text style={styles.tierPrice}>₦{tier.price.toLocaleString()}</Text>
+                  <Text style={styles.tierPrice}>
+                    ₦{tier.price.toLocaleString()}
+                  </Text>
                 </View>
-                <Text style={styles.tierPerks}>{tier.perks.join(' • ')}</Text>
+                {tier.perks.length > 0 && (
+                  <Text style={styles.tierPerks}>{tier.perks.join(" • ")}</Text>
+                )}
 
                 {isSelected && (
                   <View style={styles.quantityRow}>
@@ -166,7 +191,10 @@ export default function EventDetailScreen() {
                       </TouchableOpacity>
                       <Text style={styles.stepperValue}>{quantity}</Text>
                       <TouchableOpacity
-                        style={[styles.stepperButton, styles.stepperButtonActive]}
+                        style={[
+                          styles.stepperButton,
+                          styles.stepperButtonActive,
+                        ]}
                         onPress={() => setQuantity((q) => q + 1)}
                       >
                         <Ionicons name="add" size={16} color={colors.white} />
@@ -199,32 +227,32 @@ export default function EventDetailScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  hero: { width: '100%', height: 260 },
+  hero: { width: "100%", height: 260 },
   backButton: {
-    position: 'absolute',
+    position: "absolute",
     top: spacing.lg,
     left: spacing.md,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: "rgba(0,0,0,0.4)",
     borderRadius: radius.pill,
     padding: spacing.xs + 2,
   },
   heartButton: {
-    position: 'absolute',
+    position: "absolute",
     top: spacing.lg,
     right: spacing.md,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: "rgba(0,0,0,0.4)",
     borderRadius: radius.pill,
     padding: spacing.xs + 2,
   },
   badgeRow: {
-    position: 'absolute',
+    position: "absolute",
     bottom: spacing.sm,
     left: spacing.md,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.xs,
   },
   badge: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: "rgba(0,0,0,0.6)",
     borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
@@ -232,11 +260,24 @@ const styles = StyleSheet.create({
   badgeText: { ...typography.small, color: colors.white },
   body: { padding: spacing.lg },
   title: { ...typography.h2, color: colors.text, marginBottom: spacing.xs },
-  description: { ...typography.body, color: colors.textMuted, marginBottom: spacing.md },
-  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  description: {
+    ...typography.body,
+    color: colors.textMuted,
+    marginBottom: spacing.md,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: spacing.sm,
+  },
   infoPrimary: { ...typography.bodyBold, color: colors.text },
   infoSecondary: { ...typography.caption, color: colors.textMuted },
-  sectionHeader: { ...typography.h3, color: colors.text, marginTop: spacing.md, marginBottom: spacing.sm },
+  sectionHeader: {
+    ...typography.h3,
+    color: colors.text,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
   tierCard: {
     borderWidth: 1.5,
     borderColor: colors.border,
@@ -244,37 +285,47 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
-  tierCardSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  tierHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  tierCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  tierHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
   tierName: { ...typography.bodyBold, color: colors.text },
   tierPrice: { ...typography.bodyBold, color: colors.primary },
   tierPerks: { ...typography.caption, color: colors.textMuted },
   quantityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   quantityLabel: { ...typography.caption, color: colors.textMuted },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  stepper: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   stepperButton: {
     width: 28,
     height: 28,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  stepperButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  stepperButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
   stepperValue: { ...typography.bodyBold, color: colors.text },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.border,
@@ -282,5 +333,10 @@ const styles = StyleSheet.create({
   },
   footerLabel: { ...typography.caption, color: colors.textMuted },
   footerTotal: { ...typography.h3, color: colors.text },
-  notFound: { ...typography.body, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xxl },
+  notFound: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: "center",
+    marginTop: spacing.xxl,
+  },
 });
