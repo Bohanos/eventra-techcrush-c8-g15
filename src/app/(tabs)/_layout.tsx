@@ -1,3 +1,4 @@
+// src/app/(tabs)/_layout.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
@@ -17,35 +18,45 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="discover"
         options={{
           title: 'Discover',
-          tabBarIcon: ({ color, size }) => <Ionicons name="search" color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'search' : 'search-outline'} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="tickets"
         options={{
           title: 'Tickets',
-          tabBarIcon: ({ color, size }) => <Ionicons name="ticket" color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'ticket' : 'ticket-outline'} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
           title: 'Notifications',
-          tabBarIcon: ({ color, size }) => <Ionicons name="notifications" color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'notifications' : 'notifications-outline'} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} color={color} size={size} />
+          ),
         }}
       />
     </Tabs>
