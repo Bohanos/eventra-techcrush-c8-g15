@@ -96,7 +96,12 @@ export default function TicketsScreen() {
                 key={booking.id}
                 style={styles.card}
                 activeOpacity={0.85}
-                onPress={() => router.push(`/ticket/${booking.id}/qr`)}
+                onPress={() =>
+                  router.push({
+                    pathname: "/ticket/[id]/qr",
+                    params: { id: booking.id },
+                  })
+                }
               >
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardDate}>{booking.dateLabel}</Text>

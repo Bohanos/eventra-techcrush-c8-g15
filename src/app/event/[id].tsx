@@ -13,22 +13,18 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import PrimaryButton from "../../components/PrimaryButton";
 import { colors, radius, spacing, typography } from "../../constants/theme";
-import { useAuth } from "../../context/AuthContext";
-import { bookingsService } from "../../services/bookingsService";
 import { eventsService } from "../../services/eventsService";
 import { Event, TicketType } from "../../types";
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { user } = useAuth();
 
   const [event, setEvent] = useState<Event | null>(null);
   const [tiers, setTiers] = useState<TicketType[]>([]);
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [booking, setBooking] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -46,28 +42,21 @@ export default function EventDetailScreen() {
   const selectedTier = tiers.find((t) => t.id === selectedTierId);
   const total = (selectedTier?.price ?? 0) * quantity;
 
-  async function handleGetTickets() {
+  function handleGetTickets() {
     if (!event || !selectedTier) return;
-    setBooking(true);
-    try {
-      const newBooking = await bookingsService.createBooking({
-        eventId: event.id,
-        ticketTypeId: selectedTier.id,
-        quantity,
-        attendeeName: user ? `${user.firstName} ${user.lastName}` : "Guest",
-        eventTitle: event.title,
-        eventImage: event.image,
+    // No backend booking call here — checkout collects attendee info and
+    // (eventually) payment first. The booking itself is created at the end
+    // of the processing step, after "payment" completes.
+    router.push({
+      pathname: "/checkout/[id]/order-summary",
+      params: {
+        id: event.id,
+        tierId: selectedTier.id,
         tierName: selectedTier.name,
-        unitPrice: selectedTier.price,
-        startDate: event.startDate,
-        venue: event.venue,
-      });
-      // Skips the checkout/payment screens (not built yet) and goes
-      // straight to the issued pass — good enough for today's demo.
-      router.push(`/ticket/${newBooking.id}/qr`);
-    } finally {
-      setBooking(false);
-    }
+        unitPrice: String(selectedTier.price),
+        quantity: String(quantity),
+      },
+    });
   }
 
   if (loading) {
@@ -217,7 +206,6 @@ export default function EventDetailScreen() {
           title="Get Tickets"
           icon="arrow-forward"
           onPress={handleGetTickets}
-          loading={booking}
           style={{ flex: 1, marginLeft: spacing.md }}
         />
       </View>
